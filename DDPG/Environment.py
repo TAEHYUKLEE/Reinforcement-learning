@@ -1,0 +1,270 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[4]:
+
+
+#Bugers equation (two wave number)
+import numpy as np 
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import random
+import csv
+
+################## Global variables declare #################
+#fixed variable (Placehold)
+N = np.zeros([1],dtype = np.int32)
+nu = np.zeros([1],dtype = np.float64)
+Action_num = np.zeros([1],dtype = np.int32)
+d_t = np.zeros([1],dtype = np.int32)
+d_x = np.zeros([1],dtype = np.int32)
+Domain = np.zeros([1],dtype = np.int32)
+
+
+N = 180
+nu = 0.1
+Action_num = N #action이 a1, a2가 아니라 <a> 하나의 list로 되어있다. a가 180개로 구성되어 있다는 뜻
+Domain = 2.0*np.pi
+d_t = 1/300
+d_x = Domain/N
+
+
+#Variables can be changed
+wave = np.zeros([N],dtype = np.float64)
+x = np.zeros([N],dtype = np.float64)
+u_old = np.zeros([N],dtype = np.float64)
+U_old = np.zeros([N],dtype = np.complex128)
+U_new = np.zeros([N],dtype = np.complex128)
+G_old = np.zeros([N],dtype = np.complex128)
+state_1 = np.zeros([N],dtype = np.float64)
+state_2 = np.zeros([N],dtype = np.float64)
+state_3 = np.zeros([N],dtype = np.float64)
+state_total = np.empty(0)
+force = np.zeros([N],dtype = np.float64)
+sin_half = np.zeros([N],dtype = np.float64)
+target = np.zeros([N],dtype = np.float64)
+#############################################################
+
+
+class env(): 
+
+    def reset(self): #초기화하고 state를 보내준다
+        
+        ##################### Global varible for burgers equation #################
+        global wave, x, u_old, U_old, U_new, G_old, state_1, state_2, state_3, state_total
+        global N, d_x, d_t, Domain
+        ############################################################################
+        
+        #####한 번 다시 0으로 초기화시켜주면서 선언해준다######
+        wave = np.zeros([N],dtype = np.float64)
+        x = np.zeros([N],dtype = np.float64)
+        u_old = np.zeros([N],dtype = np.float64)
+        U_old = np.zeros([N],dtype = np.complex128)
+        U_new = np.zeros([N],dtype = np.complex128)
+        G_old = np.zeros([N],dtype = np.complex128)
+        state_1 = np.zeros([N],dtype = np.float64)
+        state_2 = np.zeros([N],dtype = np.float64)
+        state_3 = np.zeros([N],dtype = np.float64)
+        state_total = np.empty(0)
+        ########################################################
+        
+        #Initial condition (Discretization)
+        for i in range (N):
+            x[i] = i*d_x  
+
+            if(i<N//2):
+                wave[i] = i   ##wave number
+        
+            elif(i>=N//2):
+                wave[i] = i-N
+
+        for i in range (N):
+            u_old[i] = np.sin(x[i]) 
+            #sin[i] = np.sin(x[i])
+         
+        state_1 = u_old #state_current
+        state_2 = u_old #state_old
+        state_3 = state_2 - state_1 #difference betweent state_current $ state_old
+        
+        return [state_1, state_2, state_3]
+
+     
+
+    def state_num (self):
+        
+        state_num = 0
+
+        state_num = state_1.shape[0] + state_2.shape[0] + state_3.shape[0]
+        
+        return state_num
+
+    
+    
+    def action_setting (self): 
+        
+        global force, sin_half, Action_num, action, target
+
+        for i in range(N):
+            force[i] = 0.1*u_old[i] #sin forcing
+            target[i] = 0.5*u_old[i]
+        
+
+        return Action_num
+    
+
+    #DQN에서 Epsilon부분에 사용되었던 부분
+    def random_action(self):
+        
+        global Action_num
+        
+        index = np.arange(Action_num)
+        index = list(index)
+        
+        rand_action = random.sample(index, 1) 
+   
+        return rand_action
+    
+   
+    
+    
+    def record_start(self, episode):
+        
+        global record
+        
+        record = open("Episode{}.plt" .format(episode), 'w', encoding='utf-8', newline='') 
+        record.write('VARIABLES = "x", "y" \n')
+        print("record start")
+        
+        return record
+    
+    
+    
+    
+    
+    def simulation(self, action_noise, T, record): 
+        
+        global u_old, U_old, wave, U_new, G_old, state, force,  target
+        global nu, d_t, N, f
+
+        
+        summation = np.zeros([1], dtype = np.float64)
+        #위에서 받아온 action index를 주어서 실제 action 값을 받아오도록 한다.
+        action_output = np.zeros([Action_num], dtype = np.float64)
+        #print(action_output.shape)
+        
+        #print(max_action.shape)`
+        #for i in range (N):
+        action_output = action_noise #*force
+        #원래는 force[i]를 곱해줌으로써 action (amplitude)로 조절하려고 했었음 근데 지금은 continuous action space니까 #Action을 설정하는 부분.
+        #action[arg_action]    
+        
+        
+        if __name__ == "__main__":
+            print("max")
+            print(max_action)
+        
+        #u_old = state #현재 global variable로 u_old를 가져왔는데도 unbound error가 떠서 다시 state받아왔던걸 u_old로 옮겼다.
+        
+
+        for t in range(T):
+            
+            try: 
+                record.write('Zone T= "%d"\n' %t)  
+                record.write('I=%d \n' %N)
+                
+            except ValueError:
+                None 
+            
+            
+            #state가 next_state로 넘어가는기준 time-step 10번마다 한 번의 state가 넘어간다.
+                
+            w_old = u_old**2
+            U_old = np.fft.fft(u_old)  
+            G_old = np.fft.fft(w_old)
+            #print(G_old)
+
+            #Initial condition (Discretization) $ Inverse Fourier
+    
+            #for i in range (N): # without zeropadding
+            for i in range (N): # with zeropadding
+        
+                U_new[i] = (1-d_t/2*nu*(wave[i]**2))/(1+d_t/2*nu*(wave[i]**2))*U_old[i] - d_t*wave[i]/(1+d_t/2*nu*(wave[i]**2))*G_old[i]*1j
+                #U_new[i] = U_new[i] + Action[i]
+        
+        
+                if(i>=N//3 and i<N*2//3):
+                    U_new[i] = 0.0 #Zero-padding
+                
+            
+            u_old = np.real(np.fft.ifft(U_new)) #Inverse Fourier transform
+
+            
+            try: 
+                for k in range(N):
+                    record.write("%d %f \n" %(k , u_old[k]))
+                    
+            except ValueError:
+                None
+            #U (Frequency domain), u (real domain)             
+        
+        
+        #Update action to environment        
+        #if T>10 and T% 10 ==0:
+        u_old = u_old + action_output*d_t #Do action!
+        
+        
+        ########### Reward function ##########        
+        diff = abs(u_old - target)
+        reward = -(diff)+10
+        #착가했었던게 이 reward를 모든 Position에 대해서 받아버림. 모든 Position에 대해서 평균내야한다.
+        
+        for i in range (N):
+            summation = reward[i] + summation
+        
+        avg_reward = summation/N
+        #print(avg_reward)
+        
+        #np.log(x) = ln(x)
+        ######################################
+        
+        #next_state를 넣어서 보내줘야하므로
+        next_state = u_old
+            
+            
+        #done (너무 이상하게 돼서 episode를 끝내버리는 경우)
+        for _  in range (N):
+            
+            if u_old[i] >10:
+                done = True
+                
+            else:
+                done = False
+       
+        #done의 경우는 새로 나온 u값이 10이상인 수치가 있으면 Episode를 끝낸다.
+        
+ 
+      
+        ''' #Plot the graph
+        #plt.subplots(nrows=2, ncols=1) graph를 1개 이상을 보여주고 싶을때 사용한다
+        plt.plot(x[0:180],u_old[0:180],label='u-velocity')
+        #plt.plot(x[0:51],x[0:51],label='x')
+        plt.legend()
+        plt.xlabel('Distance'); plt.ylabel('u-velocity'); plt.grid()
+           
+        ''' 
+        
+        return next_state, avg_reward, done, record
+    
+    
+    def record_end(self, record):
+        
+        record.close()
+        print("record finish")
+        
+        return 0
+
+
+                    
+#RuntimeWarning: overflow encountered in square (Sin파형과 discrete한 0.3같은걸 따로 주면) 왼쪽과 같은 오류가 뜬다. (절벽이라 그럴듯)
+# 이제 알았다. forcing 유량이라고 생각하면 decaying해가는것보다 더 빠르게 증가해서 결국 발산해버려서 값을 정의하지 못하게 되는것이다.
+            
